@@ -1,12 +1,14 @@
-import { useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 function DetailedPost() {
-  const params = useParams();
+  const { state } = useLocation();
 
-  console.log(params);
-
-  //   const [post, setPost] = useState({});
-  return <div>Detailed Post</div>;
+  return (
+    <div>
+      <h1>{state.title}</h1>
+      <p>{state.body}</p>
+    </div>
+  );
 }
 
 export default DetailedPost;

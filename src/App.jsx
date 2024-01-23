@@ -8,16 +8,20 @@ export default function App() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
 
-  const [posts, setPosts] = useState(exisitingPosts || []);
-  const [filteredPosts, setFilteredPosts] = useState(exisitingPosts || []);
+  const [posts, setPosts] = useState(
+    exisitingPosts?.length > 0 ? [...exisitingPosts].reverse() : [],
+  );
 
-  // const [count, setCount] = useState(0);
   const [isUpdate, setIsUpdate] = useState(false);
   const [editPost, setEditPost] = useState({});
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
-  const [filterOpt, setFilterOpt] = useState([]);
+  const [filterOpt, setFilterOpt] = useState(
+    exisitingPosts?.length > 0
+      ? [...exisitingPosts].map((post) => post.id)
+      : [],
+  );
 
   useEffect(() => {
     if (!posts.length) {
@@ -25,37 +29,41 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    filterItems("title", search);
-  }, [search]);
-
-  useEffect(() => {
-    filterItems("id", filter);
-  }, [filter]);
-
   const fetchInitialPosts = async () => {
     fetch("https://jsonplaceholder.typicode.com/posts")
       .then((response) => response.json())
       .then((data) => {
-        setPosts(data);
-        setFilteredPosts([...data]);
+        setPosts([...data].reverse());
         setFilterOpt(data.map((post) => post.id));
         localStorage.setItem("posts", JSON.stringify(data));
       });
   };
 
+  const onChangeSearch = (e) => {
+    setSearch(e.target.value);
+    filterItems("title", e.target.value);
+  };
+
+  const onChangeFilter = (e) => {
+    setFilter(e.target.value);
+    filterItems("id", e.target.value);
+  };
+
   const filterItems = (key, value) => {
-    const exisitingPosts = [...posts];
-
-    const filteredPosts = exisitingPosts.filter((post) => {
-      if (key === "title") {
-        return post[key].toLowerCase().includes(value.toLowerCase());
-      } else {
-        return post[key] === Number(value);
-      }
-    });
-
-    setFilteredPosts([...filteredPosts]);
+    if (value !== "") {
+      const filteredPosts = JSON.parse(localStorage.getItem("posts")).filter(
+        (post) => {
+          if (key === "title") {
+            return post[key].toLowerCase().includes(value.toLowerCase());
+          } else {
+            return post[key] === Number(value);
+          }
+        },
+      );
+      setPosts([...filteredPosts].reverse());
+    } else {
+      setPosts([...JSON.parse(localStorage.getItem("posts"))].reverse());
+    }
   };
 
   const onAddUpdatePost = async () => {
@@ -78,19 +86,21 @@ export default function App() {
     )
       .then((response) => response.json())
       .then((json) => {
-        let exisitingPosts = [...posts];
-        // fetchInitialPosts(false);
+        let exisitingP = [...JSON.parse(localStorage.getItem("posts"))];
         if (isUpdate) {
           setEditPost({});
           setIsUpdate(false);
-          exisitingPosts[editPost.id - 1] = json;
+          exisitingP = exisitingP.map((post) => {
+            if (post.id === json.id) {
+              return json;
+            }
+            return post;
+          });
         } else {
-          exisitingPosts.push(json);
-          // setCount((prevState) => prevState + 1);
+          exisitingP.push(json);
         }
-        setPosts(exisitingPosts);
-        setFilteredPosts([...exisitingPosts]);
-        localStorage.setItem("posts", JSON.stringify(exisitingPosts));
+        setPosts([...exisitingP].reverse());
+        localStorage.setItem("posts", JSON.stringify(exisitingP));
         setTitle("");
         setBody("");
       });
@@ -108,17 +118,14 @@ export default function App() {
       method: "DELETE",
     })
       .then((response) => response.json())
-      .then((json) => {
-        const exisitingPosts = [...posts];
-        const filteredPosts = exisitingPosts.filter((item) => item.id !== id);
-        setPosts(filteredPosts);
-        setFilteredPosts([...filteredPosts]);
+      .then(() => {
+        const exisitingP = [...JSON.parse(localStorage.getItem("posts"))];
+        const filteredPosts = exisitingP.filter((item) => item.id !== id);
+        setPosts([...filteredPosts].reverse());
+        setFilterOpt(filteredPosts.map((post) => post.id));
         localStorage.setItem("posts", JSON.stringify(filteredPosts));
       });
   };
-
-  console.log(posts);
-  console.log(filteredPosts);
 
   return (
     <div className="App">
@@ -135,32 +142,32 @@ export default function App() {
       <button type="button" onClick={onAddUpdatePost}>
         {isUpdate ? "Update" : "Add"} Post
       </button>
-      <h1>{filteredPosts.length}</h1>
+      <h1>{posts.length}</h1>
 
       <input
-        type="search"
+        type="text"
         value={search}
         placeholder="Search"
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={onChangeSearch}
       />
       <br />
-      <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+      <select value={filter} onChange={onChangeFilter}>
+        <option value="">select</option>
         {filterOpt?.length > 0 &&
           filterOpt.map((opt) => (
-            <option key={opt} value={opt}>
+            <option key={`filter-opt-${opt}`} value={opt}>
               {opt}
             </option>
           ))}
       </select>
 
       <ul>
-        {filteredPosts?.length > 0 &&
-          [...filteredPosts].reverse().map((post) => (
+        {posts.length > 0 &&
+          posts.map((post) => (
             <li>
               <Link key={post.id} to={`/${post.id}`} state={post}>
-                <h3 onClick={() => onClickPost(post)}>{post.title}</h3>
+                <h3>{post.title}</h3>
               </Link>
-              {/* <p>{post.body}</p> */}
               <button type="button" onClick={() => onEdit(post)}>
                 Edit
               </button>
